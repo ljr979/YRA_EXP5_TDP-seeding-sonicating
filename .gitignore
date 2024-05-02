@@ -1,0 +1,15 @@
+# log files
+*.log
+
+# Annoying Office temp files
+*~$*
+
+# VSCode files
+*.vscode
+
+raw_data/*
+Results/*
+
+
+*.csv
+*.ipynb
