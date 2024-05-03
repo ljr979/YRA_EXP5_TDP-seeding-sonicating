@@ -11,17 +11,13 @@ if not os.path.exists(output_folder):
    os.makedirs(output_folder)
 
 #this is the number of minutes that each time point represents
-interval_mins = 
+interval_mins = 4
 #name of the experiment you are analysing
-Exp_num = 'Exp3_1-1'
+Exp_num = 'Exp5_1'
 #name of the file you want to be read in from this repository
-filename = 'YRA_EXP3-1_TDP_fragments'
+filename = 'raw_data'
 
-#define the palettes you want to use for the processed plotting
-p_dict = {
-    'normalised_to_max_change':'Purples',
-    'change_in_intensity':'Reds',
-}
+
 
 #make sure you go into your file beforehand and remove weird columns/metadata. Save as a csv.
 def read_add_time(input_folder, filename, interval_mins):
@@ -86,11 +82,11 @@ def average_tech_replicates(df):
 
 def subtract_background(averages):
     #identify which is blank to subtract
-    blanks = averages[averages['treat']=='blank']
+    blanks = averages[averages['treat']=='blank-x-x-x']
     #transpose and remove the time col
     blanks = blanks.T[:-1]
     #save the treatments to add back on after doing the subtraction
-    treats = averages[averages['treat']!= 'blank']
+    treats = averages[averages['treat']!= 'blank-x-x-x']
     treats_list = treats['treat'].tolist()
     #make this the same arrangement/orientation at the blank 
     treats_transp=treats.T[:-1]
@@ -99,7 +95,7 @@ def subtract_background(averages):
     subtracted['type'] = 'blank_subtracted'
     return subtracted, treats_list, treats_transp
 
-def plot_fluo_over_time(d, interval_mins, output_folder, Exp_num, palette, title, version, length_exp, ylim=False, savefig=True):
+def plot_fluo_over_time(d, interval_mins, output_folder, palette, Exp_num, length_exp, types=['change_in_intensity'], ylim=False, savefig=True):
     """plot signal over time
 
     Args:
@@ -114,23 +110,25 @@ def plot_fluo_over_time(d, interval_mins, output_folder, Exp_num, palette, title
         savefig (bool, optional): save the figure to output foldr or not. Defaults to True.
     """
 
-    test_Df = pd.melt(d, id_vars= ['ID', 'type'], var_name='timepoint', value_name='intensity' )
+    test_Df = pd.melt(d, id_vars= ['ID', 'type', 't1',  't2', 't3'], var_name='timepoint', value_name='intensity' )
 
     test_Df['time (h)'] = (test_Df['timepoint']*interval_mins)/60 
     if ylim == False:
         ylim = (min(test_Df['intensity']), max(test_Df['intensity']))
 
-    Fig, ax = plt.subplots()
-    sns.lineplot(data=test_Df, x='time (h)',y='intensity', palette=palette, hue='ID', ax=ax)
-    ax.set_xlabel('Time (h)')
-    ax.set_xlim(0,length_exp)
-    ax.set_ylim(ylim)
-    ax.set_ylabel('ThT intensity (A.U.)')
-    plt.legend()
-    plt.title(f'{title}')
-    if savefig == True:
-        plt.savefig(f'{output_folder}{Exp_num}_timeseries_{version}.png')
-    plt.show()
+    for (t1, t2), xyz in test_Df[test_Df['type'].isin(types)].groupby(['t1', 't2']):
+        Fig, ax = plt.subplots()
+        palette=p_dict[t1]
+        sns.lineplot(data=xyz, x='time (h)',y='intensity', palette=palette, hue='t3', ax=ax)
+        ax.set_xlabel('Time (h)')
+        ax.set_xlim(0,length_exp)
+        ax.set_ylim(ylim)
+        ax.set_ylabel('ThT intensity (A.U.)')
+        plt.legend()
+        plt.title(f'{t1}_{t2}')
+        if savefig == True:
+            plt.savefig(f'{output_folder}{Exp_num}_{t1}-{t2}timeseries_{version}.png')
+        plt.show()
 
 def change_over_time_normalise(treats_transp):
     change_in_intensity = []
@@ -162,71 +160,182 @@ def change_over_time_normalise(treats_transp):
     alls=pd.concat([change_in_intensity, prop_of_total])
     return alls
 
+def get_more_info(df, col_to_split, what_to_split):
+    df[['t1', 't2', 't3']] = df[f'{col_to_split}'].str.split(f'{what_to_split}',expand=True)
+    return df
+
+
 df = read_add_time(input_folder, filename, interval_mins)
 
 #stop- here you can run this next line to get a list of the wells, and then you can add in what they're called to the definition of the dictionary.
 df.columns.tolist()
 #fill this dictionary to rename the columns with the 'well' number from the plate, renamed to your sample ID (this should be in the format: for blank, just id_replicate, for others, have treatment_identifiers(separated by '-')_replicate in plate)
-col_name_dict = { 
- 'B07':'blank_blank_1',
- 'B08':'blank_blank_2',
- 'B09':'blank_blank_3',
- 'J07':"fragments_TDP-25-6M_1",
- 'J08':"fragments_TDP-25-6M_2",
- 'J09':"fragments_TDP-25-6M_3",
- 'K07':"fragments_TDP-25-2M_1",
- 'K08':"fragments_TDP-25-2M_2",
- 'K09':"fragments_TDP-25-2M_3",
- 'L07':"fragments_TDP-25-0.6M_1",
- 'L08':"fragments_TDP-25-0.6M_2",
- 'L09':"fragments_TDP-25-0.6M_3",
- 'M07':"fragments_TDP-25-0.2M_1",
- 'M08':"fragments_TDP-25-0.2M_2",
- 'M09':"fragments_TDP-25-0.2M_3",
- 'N07':"fragments_TDP-35-6M_1",
- 'N08':"fragments_TDP-35-6M_2",
- 'N09':"fragments_TDP-35-6M_3",
- 'O07':"fragments_TDP-35-2M_1",
- 'O08':"fragments_TDP-35-2M_2",
- 'O09':"fragments_TDP-35-2M_3",
- 'B11':"fragments_TDP-35-0.6M_1",
- 'B12':"fragments_TDP-35-0.6M_2",
- 'B13':"fragments_TDP-35-0.6M_3",
- 'C11':"fragments_TDP-35-0.2M_1",
- 'C12':"fragments_TDP-35-0.2M_2",
- 'C13':"fragments_TDP-35-0.2M_3",
- 'D11':"fragments_TDPLCD-0M_1",
- 'D12':"fragments_TDPLCD-0M_2",
- 'D13':"fragments_TDPLCD-0M_3",
- 'E11':"fragments_GUAN-cont-2M_1",
- 'E12':"fragments_GUAN-cont-2M_2",
- 'E13':"fragments_GUAN-cont-2M_3",
- 'F11':"fragments_TDPLCD-0.2M_1",
- 'F12':"fragments_TDPLCD-0.2M_2",
- 'F13':"fragments_TDPLCD-0.2M_3"}
+col_name_dict = { 'F02':'blank_blank-x-x-x_1',
+ 'F03':'blank_blank-x-x-x_1',
+ 'F04':'blank_blank-x-x-x_1',
+ 'F06':'seeding_TDPLCD-sonicated-0.3_1',
+ 'F07':'seeding_TDPLCD-sonicated-0.3_1',
+ 'F08':'seeding_TDPLCD-sonicated-0.3_1',
+ 'F10':'seeding_TDPt25-unsonicated-0.01_1',
+ 'F11':'seeding_TDPt25-unsonicated-0.01_1',
+ 'F12':'seeding_TDPt25-unsonicated-0.01_1',
+ 'F14':'seeding_TDPt35-unsonicated-0.3_1',
+ 'F15':'seeding_TDPt35-unsonicated-0.3_1',
+ 'F16':'seeding_TDPt35-unsonicated-0.3_1',
+ 'F18':'control_TDPmRUBY-sonicated-seeds_1',
+ 'F19':'control_TDPmRUBY-sonicated-seeds_1',
+ 'F20':'control_TDPmRUBY-sonicated-seeds_1',
+ 'G02':'control_TDPLCD-monomer_1',
+ 'G03':'control_TDPLCD-monomer_1',
+ 'G04':'control_TDPLCD-monomer_1',
+ 'G06':'seeding_TDPLCD-sonicated-0.1_1',
+ 'G07':'seeding_TDPLCD-sonicated-0.1_1',
+ 'G08':'seeding_TDPLCD-sonicated-0.1_1',
+ 'G10':'control_TDPt25-unsonicated-seeds_1',
+ 'G11':'control_TDPt25-sonicated-seeds_1',
+ 'G12':'control_TDPt25-sonicated-seeds_1',
+ 'G14':'seeding_TDPt35-unsonicated-0.1_1',
+ 'G15':'seeding_TDPt35-unsonicated-0.1_1',
+ 'G16':'seeding_TDPt35-unsonicated-0.1_1',
+ 'G18':'seeding_TDPmRUBY-sonicated-1_1',
+ 'G19':'seeding_TDPmRUBY-sonicated-1_1',
+ 'G20':'seeding_TDPmRUBY-sonicated-1_1',
+ 'H02':'control_TDPLCD-unsonicated-seeds_1',
+ 'H03':'control_TDPLCD-unsonicated-seeds_1',
+ 'H04':'control_TDPLCD-unsonicated-seeds_1',
+ 'H06':'seeding_TDPLCD-sonicated-0.03_1',
+ 'H07':'seeding_TDPLCD-sonicated-0.03_1',
+ 'H08':'seeding_TDPLCD-sonicated-0.03_1',
+ 'H10':'seeding_TDPt25-sonicated-1_1',
+ 'H11':'seeding_TDPt25-sonicated-1_1',
+ 'H12':'seeding_TDPt25-sonicated-1_1',
+ 'H14':'seeding_TDPt35-unsonicated-0.03_1',
+ 'H15':'seeding_TDPt35-unsonicated-0.03_1',
+ 'H16':'seeding_TDPt35-unsonicated-0.03_1',
+ 'H18':'seeding_TDPmRUBY-sonicated-0.3_1',
+ 'H19':'seeding_TDPmRUBY-sonicated-0.3_1',
+ 'H20':'seeding_TDPmRUBY-sonicated-0.3_1',
+ 'I02':'seeding_TDPLCD-unsonicated-1_1',
+ 'I03':'seeding_TDPLCD-unsonicated-1_1',
+ 'I04':'seeding_TDPLCD-unsonicated-1_1',
+ 'I06':'seeding_TDPLCD-sonicated-0.01_1',
+ 'I07':'seeding_TDPLCD-sonicated-0.01_1',
+ 'I08':'seeding_TDPLCD-sonicated-0.01_1',
+ 'I10':'seeding_TDPt25-sonicated-0.3_1',
+ 'I11':'seeding_TDPt25-sonicated-0.3_1',
+ 'I12':'seeding_TDPt25-sonicated-0.3_1',
+ 'I14':'seeding_TDPt35-unsonicated-0.01_1',
+ 'I15':'seeding_TDPt35-unsonicated-0.01_1',
+ 'I16':'seeding_TDPt35-unsonicated-0.01_1',
+ 'I18':'seeding_TDPmRUBY-sonicated-0.1_1',
+ 'I19':'seeding_TDPmRUBY-sonicated-0.1_1',
+ 'I20':'seeding_TDPmRUBY-sonicated-0.1_1',
+ 'J02':'seeding_TDPLCD-unsonicated-0.3_1',
+ 'J03':'seeding_TDPLCD-unsonicated-0.3_1',
+ 'J04':'seeding_TDPLCD-unsonicated-0.3_1',
+ 'J10':'seeding_TDPt25-sonicated-0.1_1',
+ 'J11':'seeding_TDPt25-sonicated-0.1_1',
+ 'J12':'seeding_TDPt25-sonicated-0.1_1',
+ 'J14':'control_TDPt35-sonicated-seeds_1',
+ 'J15':'control_TDPt35-sonicated-seeds_1',
+ 'J16':'control_TDPt35-sonicated-seeds_1',
+ 'J18':'seeding_TDPmRUBY-sonicated-0.03_1',
+ 'J19':'seeding_TDPmRUBY-sonicated-0.03_1',
+ 'J20':'seeding_TDPmRUBY-sonicated-0.03_1',
+ 'K02':'seeding_TDPLCD-unsonicated-0.1_1',
+ 'K03':'seeding_TDPLCD-unsonicated-0.1_1',
+ 'K04':'seeding_TDPLCD-unsonicated-0.1_1',
+ 'K06':'control_TDPt25-unsonicated-seeds_1',
+ 'K07':'control_TDPt25-unsonicated-seeds_1',
+ 'K08':'control_TDPt25-unsonicated-seeds_1',
+ 'K10':'seeding_TDPt25-sonicated-0.03_1',
+ 'K11':'seeding_TDPt25-sonicated-0.03_1',
+ 'K12':'seeding_TDPt25-sonicated-0.03_1',
+ 'K14':'seeding_TDPt35-sonicated-1_1',
+ 'K15':'seeding_TDPt35-sonicated-1_1',
+ 'K16':'seeding_TDPt35-sonicated-1_1',
+ 'K18':'seeding_TDPmRUBY-sonicated-0.01_1',
+ 'K19':'seeding_TDPmRUBY-sonicated-0.01_1',
+ 'K20':'seeding_TDPmRUBY-sonicated-0.01_1',
+ 'L02':'seeding_TDPLCD-unsonicated-0.03_1',
+ 'L03':'seeding_TDPLCD-unsonicated-0.03_1',
+ 'L04':'seeding_TDPLCD-unsonicated-0.03_1',
+ 'L06':'seeding_TDPt25-unsonicated-1_1',
+ 'L07':'seeding_TDPt25-unsonicated-1_1',
+ 'L08':'seeding_TDPt25-unsonicated-1_1',
+ 'L10':'seeding_TDPt25-sonicated-0.01_1',
+ 'L11':'seeding_TDPt25-sonicated-0.01_1',
+ 'L12':'seeding_TDPt25-sonicated-0.01_1',
+ 'L14':'seeding_TDPt35-sonicated-0.3_1',
+ 'L15':'seeding_TDPt35-sonicated-0.3_1',
+ 'L16':'seeding_TDPt35-sonicated-0.3_1',
+ 'M02':'seeding_TDPLCD-unsonicated-0.01_1',
+ 'M03':'seeding_TDPLCD-unsonicated-0.01_1',
+ 'M04':'seeding_TDPLCD-unsonicated-0.01_1',
+ 'M06':'seeding_TDPt25-unsonicated-0.3_1',
+ 'M07':'seeding_TDPt25-unsonicated-0.3_1',
+ 'M08':'seeding_TDPt25-unsonicated-0.3_1',
+ 'M14':'seeding_TDPt35-sonicated-0.1_1',
+ 'M15':'seeding_TDPt35-sonicated-0.1_1',
+ 'N02':'control_TDPLCD-sonicated-seeds_1',
+ 'N03':'control_TDPLCD-sonicated-seeds_1',
+ 'N04':'control_TDPLCD-sonicated-seeds_1',
+ 'N06':'seeding_TDPt25-unsonicated-0.1_1',
+ 'N07':'seeding_TDPt25-unsonicated-0.1_1',
+ 'N08':'seeding_TDPt25-unsonicated-0.1_1',
+ 'N10':'control_TDPt35-unsonicated-seeds_1',
+ 'N11':'control_TDPt35-unsonicated-seeds_1',
+ 'N12':'control_TDPt35-unsonicated-seeds_1',
+ 'N14':'seeding_TDPt35-sonicated-0.03_1',
+ 'N15':'seeding_TDPt35-sonicated-0.03_1',
+ 'N16':'seeding_TDPt35-sonicated-0.03_1',
+ 'O02':'seeding_TDPLCD-sonicated-1_1',
+ 'O03':'seeding_TDPLCD-sonicated-1_1',
+ 'O04':'seeding_TDPLCD-sonicated-1_1',
+ 'O06':'seeding_TDPt25-unsonicated-0.03_1',
+ 'O07':'seeding_TDPt25-unsonicated-0.03_1',
+ 'O08':'seeding_TDPt25-unsonicated-0.03_1',
+ 'O10':'seeding_TDPt35-unsonicated-1_1',
+ 'O11':'seeding_TDPt35-unsonicated-1_1',
+ 'O12':'seeding_TDPt35-unsonicated-1_1',
+ 'O14':'seeding_TDPt35-sonicated-0.01_1',
+ 'O15':'seeding_TDPt35-sonicated-0.01_1',
+ 'O16':'seeding_TDPt35-sonicated-0.01_1',}
+
+
 df = rename_cols(df, col_name_dict)
-
-
-time = df[df['ID']=='time(h)']
 
 averages = average_tech_replicates(df)
 
 subtracted, treats_list, treats_transp = subtract_background(averages)
+x=get_more_info(df=subtracted, col_to_split='ID', what_to_split='-')
 
-plot_fluo_over_time(d=subtracted, interval_mins=interval_mins, output_folder=output_folder, Exp_num=Exp_num, palette='viridis', title='raw_data', version='raw', length_exp=50, savefig=True)
+
+time = df[df['ID']=='time(h)']
+
+for t, z in subtracted.groupby('t1'):
+    z
+    plot_fluo_over_time(d=z, interval_mins=interval_mins, output_folder=output_folder, Exp_num=Exp_num, palette='RdBu', title='raw_data', version='raw', length_exp=20, savefig=True)
+    for u, dfv in z.groupby('t2'):
+        plot_fluo_over_time(d=dfv, interval_mins=interval_mins, output_folder=output_folder, Exp_num=Exp_num, palette='RdYlGn', title='raw_data', version='raw', length_exp=20, savefig=True)
+
 
 #then, want to calculate CHANGE over time for each treatment, and plot again.
 #make sure the columns are labelled according to the treatment
 treats_transp.columns = treats_list
 alls = change_over_time_normalise(treats_transp)
+x=get_more_info(df=alls, col_to_split='ID', what_to_split='-')
+#define the palettes you want to use for the processed plotting
+p_dict = {
+     'TDPLCD':'Purples',
+     'TDPmRUBY':'Reds',
+     'TDPt25':'Blues',
+     'TDPt35':'Greens'
 
-#define the palette for plotting
-for types, a in alls.groupby('type'):
-    palette = p_dict[f'{types}']
-    plot_fluo_over_time(d=a, interval_mins=interval_mins, output_folder=output_folder, Exp_num=Exp_num, palette=palette, title=f'{types}', version=types, length_exp=50, ylim=False, savefig=True)
+}
+#this plots all the treatments separately (with the concentrations within those treatments staying in the same graph.)
+#add different 'types' of data e.g. normalised etc. to the list 'types' if you want to plot more TYPES of data for the treatments.
+plot_fluo_over_time(d=alls, interval_mins=interval_mins, output_folder=output_folder, palette=p_dict, Exp_num=Exp_num, length_exp=20, types=['change_in_intensity'], ylim=False, savefig=False)
 
 
-#now plot a zoomed axis
-for types, a in alls.groupby('type'):
-    palette = p_dict[f'{types}']
-    plot_fluo_over_time(d=a, interval_mins=interval_mins, output_folder=output_folder, Exp_num=Exp_num, palette=palette, title=f'{types}', version=types, length_exp=50, ylim=(0,50),savefig=False)
+
