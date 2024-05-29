@@ -128,8 +128,8 @@ if __name__ == '__main__':
 
     filter_cols = []
 
-    input_path = f'results/rep_1/change_in_fluo.csv'
-    output_folder = f'results/rep_1/fitting_curves/'
+    input_path = f'results/rep_1/0_processing/change_in_fluo.csv'
+    output_folder = f'results/rep_1/1_fitting_curves/'
 
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
@@ -152,6 +152,7 @@ if __name__ == '__main__':
     # add back useful info
     fitting_parameters[info_cols] = pd.DataFrame(fitting_parameters['key'].tolist(), index=fitting_parameters.index)
     summary = pd.merge(clusters, fitting_parameters, on=info_cols, how='inner')
+    summary.to_csv(f'{output_folder}fitting_parameters.csv')
 #-----------------------
     # generate "fitted" results
     sigmoid_fitted_vals = {}
@@ -162,7 +163,7 @@ if __name__ == '__main__':
         sigmoid_fitted_vals[cluster] = y_vals
     sigmoid_fitted_vals = pd.DataFrame(sigmoid_fitted_vals).T.reset_index()
     sigmoid_fitted_vals.columns = [['ID']+ quant_cols]
-
+    sigmoid_fitted_vals.to_csv(f'{output_folder}fits.csv')
     #want to include also the data that has the actual data to be fit. so find those that got fit properly
     matched = clusters[clusters['ID'].isin(proper_fit)]
     #now get just time timeseries data
@@ -181,8 +182,9 @@ if __name__ == '__main__':
     #make sure column names are identical before concatinating them
     test_Df.columns=timeseries.columns.tolist()
     collated = pd.concat([test_Df, timeseries], axis=0)
-    
+    collated.to_csv(f'{output_folder}combined_fit_and_original.csv')
     #when i have time, need to plot this as GROUPED by the type of protein, ad the sonicated or not sonicated or monomer. Then plot those at all concentrations on one graph.
+    #also need to make sub-output folder for each of these groupings so annoying too many graphs
     for info, df in collated.groupby(['ID']):  
         ID=info[0]
         melt = pd.melt(df, id_vars= ['ID', 'type'], var_name='timepoint', value_name='intensity' )
@@ -193,7 +195,10 @@ if __name__ == '__main__':
         ax.set_xlabel('Timepoint')
         ax.set_ylabel('ThT intensity (A.U.)')
         plt.title(f'{ID}')
+        plt.savefig(f'{output_folder}{ID}_curve_fit.png')
         plt.show()
+
+
 
 
 

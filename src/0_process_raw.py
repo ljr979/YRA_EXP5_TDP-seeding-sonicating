@@ -17,8 +17,6 @@ Exp_num = 'Exp5_1'
 #name of the file you want to be read in from this repository
 filename = 'raw_data'
 
-
-
 #make sure you go into your file beforehand and remove weird columns/metadata. Save as a csv.
 def read_add_time(input_folder, filename, interval_mins):
     """cleans up your raw aggregation assay data and returns it as needed.
@@ -104,8 +102,7 @@ def plot_fluo_over_time(d, interval_mins, output_folder, palette, Exp_num, lengt
         output_folder (str): where to save
         Exp_num (str): experiment annotation
         palette (str): colour to plot
-        title (str): name of the plot
-        version (str): type of data (what you've done to treat it/process it)
+
         length_exp (float): how long you want the x axis to be (to match other experiments or show full experiment)
         savefig (bool, optional): save the figure to output foldr or not. Defaults to True.
     """
@@ -127,8 +124,9 @@ def plot_fluo_over_time(d, interval_mins, output_folder, palette, Exp_num, lengt
         plt.legend()
         plt.title(f'{t1}_{t2}')
         if savefig == True:
-            plt.savefig(f'{output_folder}{Exp_num}_{t1}-{t2}timeseries_{version}.png')
+            plt.savefig(f'{output_folder}{Exp_num}_{t1}-{t2}timeseries.png')
         plt.show()
+    return test_Df
 
 def change_over_time_normalise(treats_transp):
     change_in_intensity = []
@@ -302,29 +300,29 @@ col_name_dict = { 'F02':'blank_blank-x-x-x_1',
  'O15':'seeding_TDPt35-sonicated-0.01_1',
  'O16':'seeding_TDPt35-sonicated-0.01_1',}
 
-
 df = rename_cols(df, col_name_dict)
-
 averages = average_tech_replicates(df)
 
 subtracted, treats_list, treats_transp = subtract_background(averages)
 x=get_more_info(df=subtracted, col_to_split='ID', what_to_split='-')
-
-
+subtracted.to_csv(f'{output_folder}bg_subtracted.csv')
+x.to_csv(f'{output_folder}bg_subtracted_plus_info.csv')
 time = df[df['ID']=='time(h)']
 
 for t, z in subtracted.groupby('t1'):
     z
-    plot_fluo_over_time(d=z, interval_mins=interval_mins, output_folder=output_folder, Exp_num=Exp_num, palette='RdBu', title='raw_data', version='raw', length_exp=20, savefig=True)
+    plot_fluo_over_time(d=z, interval_mins=interval_mins, output_folder=output_folder, Exp_num=Exp_num, palette='RdBu',  length_exp=20, savefig=True)
     for u, dfv in z.groupby('t2'):
-        plot_fluo_over_time(d=dfv, interval_mins=interval_mins, output_folder=output_folder, Exp_num=Exp_num, palette='RdYlGn', title='raw_data', version='raw', length_exp=20, savefig=True)
+        plot_fluo_over_time(d=dfv, interval_mins=interval_mins, output_folder=output_folder, Exp_num=Exp_num, palette='RdYlGn',  length_exp=20, savefig=True)
 
 
 #then, want to calculate CHANGE over time for each treatment, and plot again.
 #make sure the columns are labelled according to the treatment
 treats_transp.columns = treats_list
 alls = change_over_time_normalise(treats_transp)
+alls.to_csv(f'{output_folder}change_in_fluo.csv')
 x=get_more_info(df=alls, col_to_split='ID', what_to_split='-')
+x.to_csv(f'{output_folder}change_in_intensity_plus_info.csv')
 #define the palettes you want to use for the processed plotting
 p_dict = {
      'TDPLCD':'Purples',
@@ -335,7 +333,25 @@ p_dict = {
 }
 #this plots all the treatments separately (with the concentrations within those treatments staying in the same graph.)
 #add different 'types' of data e.g. normalised etc. to the list 'types' if you want to plot more TYPES of data for the treatments.
-plot_fluo_over_time(d=alls, interval_mins=interval_mins, output_folder=output_folder, palette=p_dict, Exp_num=Exp_num, length_exp=20, types=['change_in_intensity'], ylim=False, savefig=False)
+new_plotting_melted=plot_fluo_over_time(d=alls, interval_mins=interval_mins, output_folder=output_folder, palette=p_dict, Exp_num=Exp_num, length_exp=20, types=['change_in_intensity'], ylim=False, savefig=True)
 
 
 
+#need to get this working when I get home :) 
+nrows=4
+ncols=2
+new_plotting_melted=new_plotting_melted[new_plotting_melted['type']=='change_in_intensity']
+fig, axes = plt.subplots(nrows=nrows, ncols=ncols, sharex=False, figsize=(12, 12))
+for x, (t1, dataframe) in enumerate(new_plotting_melted.groupby(['t1','t2'])):
+    dataframe
+    sns.lineplot(ax=axes[x], data=dataframe, x='time (h)',y='intensity', palette=p_dict[t1[0]], hue='t3')
+    axes[x].set_xlabel("client", fontsize=2)
+    axes[x].set_ylabel("", fontsize=24)
+    stepsize=10
+    end=xlimo+10
+    axes[x].xaxis.set_ticks(np.arange(0, end, stepsize))
+    axes[x].set(xlim=(0,xlimo), ylim=(0,ylimo))
+
+    axes[x].annotate(median_ratio, xy=(16,16))
+    axes[x].set_title(f'{timepoint} (min)', fontsize = 20, y=0.9, va='top')
+    axes[x].tick_params(axis='both', labelsize=20)
