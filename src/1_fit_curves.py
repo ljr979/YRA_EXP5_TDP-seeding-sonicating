@@ -83,6 +83,48 @@ def denaturant_fit(compiled, info_cols, quant_cols):
     return fit_params, no_fit, proper_fit
 
 
+def boltzmann_fit(compiled, info_cols, quant_cols):
+    fit_params = {}
+    no_fit = []
+    proper_fit = []
+    for info, quant_data in compiled.set_index(info_cols).iterrows():
+        info
+        logger.info(f'working on {info}')
+        quant_data
+        # extract x and y vals for fitting
+        y_vals = np.array(list(quant_data[quant_cols]))
+        x_vals = np.array([float(x) for x in quant_cols])
+
+        # Attempt fitting
+        try:
+            model = Model(boltzmann)
+            params = model.make_params(
+                #CHANGE THESE guesses TO BE SUITED TO THE DATA!
+                bottom=500, top=30000, v50=90, slope=10)
+            result = model.fit(y_vals, params, x=x_vals)
+            r_squared = r_squared_calculator(
+                x_vals, y_vals, boltzmann, result.values.values())
+
+            # Collect fitted parameters
+            fit_stats = pd.DataFrame()
+            for parameter, details in result.params.items():
+                fit_stats[f'{parameter}_value'] = [details.value]
+                fit_stats[f'{parameter}_stderr'] = [details.stderr]
+                fit_stats[f'{parameter}_relerr'] = fit_stats[f'{parameter}_stderr'].values[0] / \
+                    fit_stats[f'{parameter}_value'].values[0] * 100
+
+            # add r-squared value, key info
+            fit_stats['r_squared'] = r_squared
+            fit_stats['key'] = [info]
+
+            fit_params[info] = fit_stats
+            proper_fit.append(info[0])
+
+        except:
+            logger.info(f'No fit found for {info}')
+            no_fit.append(info[0])
+    return fit_params, no_fit, proper_fit
+
 def sigmoid_filter(summary, filter_R2=True, filter_range=True, filter_cM=True, filter_relerr=True, filter_direction=True):
     
     # apply filtering criteria
@@ -134,7 +176,7 @@ if __name__ == '__main__':
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
-    # Read in cluster data
+    # Read in change in fluorescence intensity data
     clusters_summary = pd.read_csv(input_path)
     change_in = clusters_summary[clusters_summary['type']=='change_in_intensity']
     info_cols = ['ID','type','t1','t2','t3']
@@ -144,7 +186,7 @@ if __name__ == '__main__':
 #------------------------
     quant_cols = [col for col in change_in.columns.tolist() if col not in info_cols]
     clusters = change_in[info_cols+quant_cols]
-#__________________________________HERE IS WHERE I LOSE SEVERAL TREATMENTS- HERE NEED TO COMPARE BETWEEN AND THEN FIND THE ONES THAT ARE MISSING AND WHY? PLOT THEM? I SUCK AT THIS
+#------------here is where some can't be fit. need to look into why they can't be fit   and figure out what to do with them? use a different equation?
     # complete denaturant fit and return a list of those that couldn't be fit
     fit_params, no_fit, proper_fit = denaturant_fit(clusters, info_cols=info_cols, quant_cols=quant_cols)
     fitting_parameters = pd.concat(fit_params.values()).reset_index(drop=True)
@@ -153,8 +195,16 @@ if __name__ == '__main__':
     fitting_parameters[info_cols] = pd.DataFrame(fitting_parameters['key'].tolist(), index=fitting_parameters.index)
     summary = pd.merge(clusters, fitting_parameters, on=info_cols, how='inner')
     summary.to_csv(f'{output_folder}fitting_parameters.csv')
+
+
+
+#------------------------
+#Try boltzmann- This doesn't work! the parameters I input match exactly the ones that fit quite well to one single treatment in graphpad (I put one treatment in as a test), but this same treatment can't be fit with these parameters here so I think it's just me doing something wrong still!
+    fit_params, no_fit, proper_fit=boltzmann_fit(clusters, info_cols=info_cols, quant_cols=quant_cols)
+
 #-----------------------
     # generate "fitted" results
+    #below here all works (runs, and outputs look okay!) for the denaturant fits
     sigmoid_fitted_vals = {}
     for cluster, df in summary.iterrows():
         # generate fitted values
@@ -170,7 +220,10 @@ if __name__ == '__main__':
     timeseries = matched[quant_cols]
     #now add the ID
     timeseries['ID'] = matched['ID']
-    #now want to concatinate these two dataframes and add a column to each which says whether it is the fitted data or the original data
+
+
+
+    #now want to concatinate these two dataframes and add a column to each which says whether it is the fitted data or the original data wtf why did they all go whacky needed to do this because some of them went crazy need to fix in future
     timeseries ['type'] = 'original'
     test_Df = sigmoid_fitted_vals.copy()
     test_Df['type'] = 'fit'
@@ -183,6 +236,8 @@ if __name__ == '__main__':
     test_Df.columns=timeseries.columns.tolist()
     collated = pd.concat([test_Df, timeseries], axis=0)
     collated.to_csv(f'{output_folder}combined_fit_and_original.csv')
+
+
     #when i have time, need to plot this as GROUPED by the type of protein, ad the sonicated or not sonicated or monomer. Then plot those at all concentrations on one graph.
     #also need to make sub-output folder for each of these groupings so annoying too many graphs
     for info, df in collated.groupby(['ID']):  
