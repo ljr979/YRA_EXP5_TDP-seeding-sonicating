@@ -4,8 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-input_folder = 'raw_data/rep_2/'
-output_folder = 'Results/rep_2/0_processing/'
+input_folder = 'raw_data/rep_3/'
+output_folder = 'Results/rep_3/0_processing/'
 
 if not os.path.exists(output_folder):
    os.makedirs(output_folder)
@@ -13,7 +13,7 @@ if not os.path.exists(output_folder):
 #this is the number of minutes that each time point represents
 interval_mins = 4
 #name of the experiment you are analysing
-Exp_num = 'Exp5_2'
+Exp_num = 'Exp5_3'
 #name of the file you want to be read in from this repository
 filename = 'raw_data'
 
