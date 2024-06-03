@@ -111,7 +111,5 @@ if __name__ == '__main__':
 fit_params = pd.DataFrame(fit_params, columns=['sample', 'bottom', 'top', 'V50', 'slope', 'decay', 'tlag','rquare'])
 
 
-
-
 nots = pd.DataFrame(no_fit, columns=['sample']).to_csv(f'{output_folder}no_fit.csv')
 fit_params.to_csv(f'{output_folder}fit_parameters.csv')
