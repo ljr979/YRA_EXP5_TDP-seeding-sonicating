@@ -6,8 +6,8 @@ import seaborn as sns
 from loguru import logger
 from lifelines import KaplanMeierFitter 
 
-input_folder = 'results/rep_2/1_fitting_curves/'
-output_folder = 'results/rep_2/2_kaplan-meier/'
+input_folder = 'results/rep_3/1_fitting_curves/'
+output_folder = 'results/rep_3/2_kaplan-meier/'
 
 
 if not os.path.exists(output_folder):
@@ -17,13 +17,13 @@ fits = pd.read_csv(f'{input_folder}fit_parameters.csv')
 
 no_fit_treatments = pd.read_csv(f'{input_folder}no_fit.csv')
 
-timeseries = pd.read_csv('results/rep_2/1_fitting_curves/clean_for_fitting.csv')
+timeseries = pd.read_csv('results/rep_3/1_fitting_curves/clean_for_fitting.csv')
 
 endpoint = list(timeseries['timepoint'].unique())[-1]
 
 #need to turn these into time and event data. The event in this case is the LAG phase ending. so the time will be the 'tlag' and the event will be 1. Then, the no_fit will have the time as the end point, and the 'no event' will be a 0.
 #so need a new dataframe with sample, and tlag columns to start with.
-events = fits[['sample', 'tlag']][fits['rquare']>0.95]
+events = fits[['sample', 'tlag']][fits['rquare']>0.9]
 #fill the events column of  this dataframe with a 1, as these all were fit to the sigmoid
 #make a more sophisticated way in future? where I combine everything and say if rsquare > threshold and tlag < endpoint, assign 1, else then where tlag = endpoint, assign event = 0
 events['event'] = int(1)
@@ -34,7 +34,8 @@ no_fit_treatments['event'] = int(0)
 
 #mash the two dfs together
 events_combined = pd.concat([events, no_fit_treatments])
-
+events_combined[['t1', 't2', 't3', 'replicate']] = events_combined['sample'].str.split('-', expand=True)
+events_combined['sample'] = events_combined[['t1', 't2', 't3']].agg('-'.join, axis=1)
 
 survival = []
 for i, (treatment, df) in enumerate(events_combined.groupby('sample')):
@@ -78,7 +79,7 @@ p_dict = {
 for t1, xyz in survival.groupby(['t1']):
     t1
     xyz
-    sub = len(xyz['t1'].unique().tolist())
+    sub = len(xyz['t2'].unique().tolist())
     if sub == 1:
         row = 1
         col = 2
@@ -97,7 +98,7 @@ for t1, xyz in survival.groupby(['t1']):
         hue = 'sample',
         data = abc, palette=palette, ax=axes[i]
         )
-        axes[i].set_xlim(0,int(endpoint))
+        axes[i].set_xlim(min(abc['timeline']),int(endpoint))
         axes[i].set_xlabel('')
         axes[i].set_ylabel('Likelihood')
         axes[i].annotate(f'{t2}', xy=(0.8, 1))
