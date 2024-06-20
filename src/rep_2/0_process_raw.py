@@ -4,8 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-input_folder = 'raw_data/rep_3/'
-output_folder = 'Results/rep_3/0_processing/'
+input_folder = 'raw_data/rep_2/'
+output_folder = 'Results/rep_2/0_processing/'
 
 if not os.path.exists(output_folder):
    os.makedirs(output_folder)
@@ -13,7 +13,7 @@ if not os.path.exists(output_folder):
 #this is the number of minutes that each time point represents
 interval_mins = 4
 #name of the experiment you are analysing
-Exp_num = 'Exp5_3'
+Exp_num = 'Exp5_2'
 #name of the file you want to be read in from this repository
 filename = 'raw_data'
 
@@ -34,6 +34,7 @@ def read_add_time(input_folder, filename, interval_mins):
     # read in file
     df = pd.read_csv(f'{input_folder}{filename}.csv' )
     df.drop(df.index[:1], inplace=True)
+    df.replace(r'\N', np.nan, inplace = True)
     df.insert(0, 'time(min)', range(0, 0 + len(df)*interval_mins,interval_mins))
     df['time(h)'] = df['time(min)']/60
     return df
@@ -52,45 +53,71 @@ def rename_cols(df, col_name_dict):
     df.drop([col for col in df.columns.tolist() if col in ['Well', 'Unnamed: 1', 'time(min)']], axis=1, inplace=True)
     df = df.T.reset_index().rename(columns={'index':'ID'})
     return df
-
-def average_tech_replicates(df):
+def add_info (df):
     new=[]
     #little loop to make some columns to identify each treatment
     for ids, d in df.groupby('ID'):    
+        ids
+        d
         if 'time(h)' not in ids:
             d['treat2'] = ids.split('_')[1]
             d['treat1'] = ids.split('_')[0]
-            d['replicate'] = ids.split('_')[-1]
+            d['replicate'] = d.groupby('ID').cumcount()+ 1
             new.append(d)
-    new=pd.concat(new)
-    
+    new = pd.concat(new)
+    return new
+
+def average_tech_replicates(new):
     #now average the numeric data between technical replicates
     averages = []
     for treat, x in new.groupby('treat2'):
         x
-        to_av=[col for col in x if col not in ['ID', 'replicate', 'treat1', 'treat2']]
+        to_av = [col for col in x if col not in ['ID', 'replicate', 'treat1', 'treat2']]
         numeric = x[[c for c in x.columns if c in to_av]].astype(int)
         #averge the values between replicates
         average = pd.DataFrame(numeric.mean(axis=0)).T
         #add back in the treatment column to identify the data
         average['treat'] = treat
         averages.append(average)
-    averages=pd.concat(averages)
+    averages = pd.concat(averages)
     return averages
 
 def subtract_background(averages):
     #identify which is blank to subtract
     blanks = averages[averages['treat']=='blank-x-x-x']
-    #transpose and remove the time col
-    blanks = blanks.T[:-1]
+    #blanks = blanks[blanks['replicate'] == '1'] 
+
+    ifo_cols = ['ID', 'replicate', 'treat1', 'treat2', 'treat']
+    to_av = blanks[[col for col in blanks if col not in ifo_cols]]
+    numeric = blanks[[c for c in blanks.columns if c in to_av]].astype(int)
+
+    #averge the values between replicates
+    blank_av = pd.DataFrame(numeric.mean(axis=0), columns = ['blank']).T.reset_index().rename(columns={'index':'ID'})
+
     #save the treatments to add back on after doing the subtraction
     treats = averages[averages['treat']!= 'blank-x-x-x']
+    treats['replicate'] = treats['replicate'].astype(str)
+    #now keep the replicate information
+    treats['ID'] = treats[['ID', 'replicate']].agg('-'.join, axis=1)
+    #save the treatment names
     treats_list = treats['treat'].tolist()
-    #make this the same arrangement/orientation at the blank 
-    treats_transp=treats.T[:-1]
-    #actually subtract the blank from each of the other treatments
-    subtracted = (treats_transp - blanks).set_axis(treats_list, axis=1).T.reset_index().rename(columns={'index':'ID'})
+    #now make sure each row is a treatment and each column is a timepoint, but remove the column containing the strings (i.e. the treatment names)
+    treats = treats[[col for col in treats if col not in ['replicate', 'treat1', 'treat2', 'treat']]]
+
+    treats = pd.concat([treats, blank_av])
+
+    df = treats.T
+    header = df.iloc[0]
+    df = df[1:].rename(columns=header)
+    #everything is a bloody string so need it to be a number!!!!!!!!!!!!!!!!!!!!!!!
+    df = df.apply(pd.to_numeric)
+    treats_transp = df
+    #subtract the blanks from all other values
+    subtracted = df.sub(df['blank'], axis=0).T.reset_index().rename(columns = {'index':'ID'})
+
     subtracted['type'] = 'blank_subtracted'
+
+
     return subtracted, treats_list, treats_transp
 
 def plot_fluo_over_time(d, interval_mins, output_folder, palette, Exp_num, length_exp, types=['change_in_intensity'], ylim=False, savefig=True):
@@ -107,7 +134,7 @@ def plot_fluo_over_time(d, interval_mins, output_folder, palette, Exp_num, lengt
         savefig (bool, optional): save the figure to output foldr or not. Defaults to True.
     """
 
-    test_Df = pd.melt(d, id_vars= ['ID', 'type', 't1',  't2', 't3'], var_name='timepoint', value_name='intensity' )
+    test_Df = pd.melt(d, id_vars= ['ID', 'type', 't1',  't2', 't3', 'replicate'], var_name='timepoint', value_name='intensity' )
 
     test_Df['time (h)'] = (test_Df['timepoint']*interval_mins)/60 
     if ylim == False:
@@ -124,7 +151,13 @@ def plot_fluo_over_time(d, interval_mins, output_folder, palette, Exp_num, lengt
             row = 1
             col = sub
         Fig, axes = plt.subplots(row, col, figsize=(16,5))
+        if palette == 'p_dict':
+            palette = p_dict
+        
         palette = p_dict[t1]
+
+        if palette!= 'p_dict':
+            palette = palette
         for i, (t2, abc) in enumerate(xyz.groupby('t2')):
             i
             t2
@@ -143,10 +176,12 @@ def plot_fluo_over_time(d, interval_mins, output_folder, palette, Exp_num, lengt
 def change_over_time_normalise(treats_transp):
     change_in_intensity = []
     prop_of_total = []
+
     for col, vals in treats_transp.items():
         col
         #loop over each column (i.e. average intensity minus blank, for each treatment)
         z = pd.DataFrame(vals)
+
         start = z[f'{col}'].iloc[0]
         #for each value, subtract the INITIAL intensity of that treatment from every other value in the column. This gives the change over time in terms of fluorescence intensity values
         change = (z-start)
@@ -171,10 +206,10 @@ def change_over_time_normalise(treats_transp):
     return alls
 
 def get_more_info(df, col_to_split, what_to_split):
-    df[['t1', 't2', 't3']] = df[f'{col_to_split}'].str.split(f'{what_to_split}',expand=True)
+    df[['t1', 't2', 't3', 'replicate']] = df[f'{col_to_split}'].str.split(f'{what_to_split}',expand=True)
     return df
 
-
+    
 df = read_add_time(input_folder, filename, interval_mins)
 
 #stop- here you can run this next line to get a list of the wells, and then you can add in what they're called to the definition of the dictionary.
@@ -322,49 +357,72 @@ col_name_dict = {
  'O11':'seeding_TDPmRUBY-sonicated-1_1',
  'O12':'seeding_TDPmRUBY-sonicated-1_1',
  'O13':'seeding_TDPmRUBY-sonicated-1_1'}
+
+
 df = rename_cols(df, col_name_dict)
-averages = average_tech_replicates(df)
+df = df.fillna(0)
+new = add_info(df)
+
+average = False
+if average:
+    averages = average_tech_replicates(new)
+if not average:
+    averages = new
+    averages['treat'] = averages['treat2']
+    averages['ID'] = averages ['treat2']
 
 subtracted, treats_list, treats_transp = subtract_background(averages)
 x=get_more_info(df=subtracted, col_to_split='ID', what_to_split='-')
-subtracted.to_csv(f'{output_folder}bg_subtracted.csv')
-x.to_csv(f'{output_folder}bg_subtracted_plus_info.csv')
-time = df[df['ID']=='time(h)']
+# time = df[df['ID']=='time(h)']
+# x = pd.concat([x, time])
+x.to_csv(f'{output_folder}bg_subtracted.csv')
 
 for t, z in subtracted.groupby('t1'):
     z
-    plot_fluo_over_time(d=z, interval_mins=interval_mins, output_folder=output_folder, Exp_num=Exp_num, palette='RdBu',  length_exp=20, savefig=True)
-    for u, dfv in z.groupby('t2'):
-        plot_fluo_over_time(d=dfv, interval_mins=interval_mins, output_folder=output_folder, Exp_num=Exp_num, palette='RdYlGn',  length_exp=20, savefig=True)
+    if 'blank' not in t:
+        d=z
+        plot_fluo_over_time(d=z, interval_mins=interval_mins, output_folder=output_folder, palette='RdBu', Exp_num=Exp_num, length_exp=20, types=['blank_subtracted'], ylim=False, savefig=True)
+        # for u, dfv in z.groupby('t2'):
+        #     plot_fluo_over_time(d=dfv, interval_mins=interval_mins, output_folder=output_folder, palette='RdYlGn', Exp_num=Exp_num, length_exp=20, types=['blank_subtracted'], ylim=False, savefig=False)
 
 
 #then, want to calculate CHANGE over time for each treatment, and plot again.
 #make sure the columns are labelled according to the treatment
-treats_transp.columns = treats_list
-alls = change_over_time_normalise(treats_transp)
+alls = change_over_time_normalise(treats_transp=treats_transp)
 alls.to_csv(f'{output_folder}change_in_fluo.csv')
 x=get_more_info(df=alls, col_to_split='ID', what_to_split='-')
-x.to_csv(f'{output_folder}change_in_intensity_plus_info.csv')
+
+
 
 
 #want to just split off the 'monomer' alone (LCD alone)
 monomer = x[~x['t2'].isin(['sonicated', 'unsonicated'])]
-x['t3'][x['t2']=='monomer'] = 0
-x['t3'][x['t2']=='monmon'] = 0
+alls['replicate'][alls['t2']=='monomer'] = alls['t3'][alls['t2']=='monomer']
+alls['replicate'][alls['t2']=='monmon'] = alls['t3'][alls['t2']=='monmon']
 
+alls['t3'][alls['t2']=='monomer'] = 0
+alls['t3'][alls['t2']=='monmon'] = 1
 #define the palettes you want to use for the processed plotting
 p_dict = {
      'TDPLCD':'Purples',
      'TDPmRUBY':'Reds',
      'TDPt25':'Blues',
-     'TDPt35':'Greens'
+     'TDPt35':'Greens',
 
 }
 #this plots all the treatments separately (with the concentrations within those treatments staying in the same graph.)
 #add different 'types' of data e.g. normalised etc. to the list 'types' if you want to plot more TYPES of data for the treatments.
+alls = alls[alls['ID']!='blank']
+seeding = alls[alls['t3'].isin(['0.01', '0.03', '0.1', '0.3', '1'])]
+alls.to_csv(f'{output_folder}change_in_intensity_plus_info.csv')
 new_plotting_melted=plot_fluo_over_time(d=alls, interval_mins=interval_mins, output_folder=output_folder, palette=p_dict, Exp_num=Exp_num, length_exp=20, types=['change_in_intensity'], ylim=False, savefig=True)
 
 
+# #plots the lcd alone and the seeds alone
+
+# controls = alls[alls['t3'].isin([0, 'seeds'])]
+
+# new_plotting_melted=plot_fluo_over_time(d=controls, interval_mins=interval_mins, output_folder=output_folder, palette='YlOrBr', Exp_num=Exp_num, length_exp=20, types=['change_in_intensity'], ylim=False, savefig=True)
 
 
 
@@ -384,31 +442,3 @@ new_plotting_melted=plot_fluo_over_time(d=alls, interval_mins=interval_mins, out
 
 
 
-
-
-
-
-
-
-
-
-
-
-#need to get this working when I get home :) 
-nrows=4
-ncols=2
-new_plotting_melted=new_plotting_melted[new_plotting_melted['type']=='change_in_intensity']
-fig, axes = plt.subplots(nrows=nrows, ncols=ncols, sharex=False, figsize=(12, 12))
-for x, (t1, dataframe) in enumerate(new_plotting_melted.groupby(['t1','t2'])):
-    dataframe
-    sns.lineplot(ax=axes[x], data=dataframe, x='time (h)',y='intensity', palette=p_dict[t1[0]], hue='t3')
-    axes[x].set_xlabel("client", fontsize=2)
-    axes[x].set_ylabel("", fontsize=24)
-    stepsize=10
-    end=xlimo+10
-    axes[x].xaxis.set_ticks(np.arange(0, end, stepsize))
-    axes[x].set(xlim=(0,xlimo), ylim=(0,ylimo))
-
-    axes[x].annotate(median_ratio, xy=(16,16))
-    axes[x].set_title(f'{timepoint} (min)', fontsize = 20, y=0.9, va='top')
-    axes[x].tick_params(axis='both', labelsize=20)

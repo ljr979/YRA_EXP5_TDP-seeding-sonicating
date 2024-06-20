@@ -30,8 +30,8 @@ if __name__ == '__main__':
 
     filter_cols = []
 
-    input_path = 'results/rep_2/0_processing/change_in_intensity_plus_info.csv'
-    output_folder = 'results/rep_2/1_fitting_curves/'
+    input_path = 'results/rep_1/0_processing/change_in_intensity_plus_info.csv'
+    output_folder = 'results/rep_1/1_fitting_curves/'
 
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)

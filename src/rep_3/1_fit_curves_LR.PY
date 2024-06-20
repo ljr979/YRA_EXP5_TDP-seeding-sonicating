@@ -30,8 +30,8 @@ if __name__ == '__main__':
 
     filter_cols = []
 
-    input_path = 'results/rep_2/0_processing/change_in_intensity_plus_info.csv'
-    output_folder = 'results/rep_2/1_fitting_curves/'
+    input_path = 'results/rep_3/0_processing/change_in_intensity_plus_info.csv'
+    output_folder = 'results/rep_3/1_fitting_curves/'
 
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
@@ -105,7 +105,11 @@ if __name__ == '__main__':
         except:
             logger.info(f'No fit found for {inform}')
             no_fit.append(inform)
-
+ 
 fit_params = pd.DataFrame(fit_params, columns=['sample', 'bottom', 'top', 'V50', 'slope', 'decay', 'tlag','rquare'])
+
+
+
+
 nots = pd.DataFrame(no_fit, columns=['sample']).to_csv(f'{output_folder}no_fit.csv')
 fit_params.to_csv(f'{output_folder}fit_parameters.csv')

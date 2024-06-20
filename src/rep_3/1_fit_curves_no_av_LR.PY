@@ -52,6 +52,9 @@ if __name__ == '__main__':
         var_name='timepoint'
     )
     clean_data['timepoint'] = (clean_data['timepoint'].astype(int))*4/60
+    #below line is only applicable for this case where there are a number of values that mess up the fitting (because of an experimental issue). To attempt to fit despite this problem, want to make all the negatives 0, because otherwise the start of the boltzmann starts way below where it should (ruining the lag time)
+    clean_data['intensity']=clean_data['intensity'].clip(lower=0)
+
     clean_data.to_csv(f'{output_folder}clean_for_fitting.csv')
     clean_data=clean_data[clean_data['ID']!='blank']
     # Test each fit version to compare
@@ -65,6 +68,7 @@ if __name__ == '__main__':
         for replicate, df1 in df.groupby('replicate'):
             replicate
             inform = f'{sample}-{t2}-{t3}-{replicate}'
+            df1
             try:
                 x_vals = df1['timepoint'].values
                 y_vals = df1['intensity'].values
