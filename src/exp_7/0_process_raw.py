@@ -4,8 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-input_folder = 'raw_data/rep_1/'
-output_folder = 'Results/rep_1/0_processing/'
+input_folder = 'raw_data/exp_7/rep_1/'
+output_folder = 'Results/exp_7/0_processing/'
 
 if not os.path.exists(output_folder):
    os.makedirs(output_folder)
@@ -13,7 +13,7 @@ if not os.path.exists(output_folder):
 #this is the number of minutes that each time point represents
 interval_mins = 4
 #name of the experiment you are analysing
-Exp_num = 'Exp5_1'
+Exp_num = 'Exp7_1'
 #name of the file you want to be read in from this repository
 filename = 'raw_data'
 
@@ -213,139 +213,63 @@ df = read_add_time(input_folder, filename, interval_mins)
 #stop- here you can run this next line to get a list of the wells, and then you can add in what they're called to the definition of the dictionary.
 df.columns.tolist()
 #fill this dictionary to rename the columns with the 'well' number from the plate, renamed to your sample ID (this should be in the format: for blank, just id_replicate, for others, have treatment_identifiers(separated by '-')_replicate in plate)
-#fill this dictionary to rename the columns with the 'well' number from the plate, renamed to your sample ID (this should be in the format: for blank, just id_replicate, for others, have treatment_identifiers(separated by '-')_replicate in plate)
-col_name_dict = { 'F02':'blank_blank-x-x-x_1',
- 'F03':'blank_blank-x-x-x_1',
- 'F04':'blank_blank-x-x-x_1',
- 'F06':'seeding_TDPLCD-sonicated-0.3_1',
- 'F07':'seeding_TDPLCD-sonicated-0.3_1',
- 'F08':'seeding_TDPLCD-sonicated-0.3_1',
- 'F10':'seeding_TDPt25-unsonicated-0.01_1',
- 'F11':'seeding_TDPt25-unsonicated-0.01_1',
- 'F12':'seeding_TDPt25-unsonicated-0.01_1',
- 'F14':'seeding_TDPt35-unsonicated-0.3_1',
- 'F15':'seeding_TDPt35-unsonicated-0.3_1',
- 'F16':'seeding_TDPt35-unsonicated-0.3_1',
- 'F18':'control_TDPmRUBY-sonicated-seeds_1',
- 'F19':'control_TDPmRUBY-sonicated-seeds_1',
- 'F20':'control_TDPmRUBY-sonicated-seeds_1',
- 'G02':'control_TDPLCD-monomer_1',
- 'G03':'control_TDPLCD-monomer_1',
- 'G04':'control_TDPLCD-monomer_1',
- 'G06':'seeding_TDPLCD-sonicated-0.1_1',
- 'G07':'seeding_TDPLCD-sonicated-0.1_1',
- 'G08':'seeding_TDPLCD-sonicated-0.1_1',
- 'G10':'control_TDPt25-unsonicated-seeds_1',
- 'G11':'control_TDPt25-sonicated-seeds_1',
- 'G12':'control_TDPt25-sonicated-seeds_1',
- 'G14':'seeding_TDPt35-unsonicated-0.1_1',
- 'G15':'seeding_TDPt35-unsonicated-0.1_1',
- 'G16':'seeding_TDPt35-unsonicated-0.1_1',
- 'G18':'seeding_TDPmRUBY-sonicated-1_1',
- 'G19':'seeding_TDPmRUBY-sonicated-1_1',
- 'G20':'seeding_TDPmRUBY-sonicated-1_1',
- 'H02':'control_TDPLCD-unsonicated-seeds_1',
- 'H03':'control_TDPLCD-unsonicated-seeds_1',
- 'H04':'control_TDPLCD-unsonicated-seeds_1',
- 'H06':'seeding_TDPLCD-sonicated-0.03_1',
- 'H07':'seeding_TDPLCD-sonicated-0.03_1',
- 'H08':'seeding_TDPLCD-sonicated-0.03_1',
- 'H10':'seeding_TDPt25-sonicated-1_1',
- 'H11':'seeding_TDPt25-sonicated-1_1',
- 'H12':'seeding_TDPt25-sonicated-1_1',
- 'H14':'seeding_TDPt35-unsonicated-0.03_1',
- 'H15':'seeding_TDPt35-unsonicated-0.03_1',
- 'H16':'seeding_TDPt35-unsonicated-0.03_1',
- 'H18':'seeding_TDPmRUBY-sonicated-0.3_1',
- 'H19':'seeding_TDPmRUBY-sonicated-0.3_1',
- 'H20':'seeding_TDPmRUBY-sonicated-0.3_1',
- 'I02':'seeding_TDPLCD-unsonicated-1_1',
- 'I03':'seeding_TDPLCD-unsonicated-1_1',
- 'I04':'seeding_TDPLCD-unsonicated-1_1',
- 'I06':'seeding_TDPLCD-sonicated-0.01_1',
- 'I07':'seeding_TDPLCD-sonicated-0.01_1',
- 'I08':'seeding_TDPLCD-sonicated-0.01_1',
- 'I10':'seeding_TDPt25-sonicated-0.3_1',
- 'I11':'seeding_TDPt25-sonicated-0.3_1',
- 'I12':'seeding_TDPt25-sonicated-0.3_1',
- 'I14':'seeding_TDPt35-unsonicated-0.01_1',
- 'I15':'seeding_TDPt35-unsonicated-0.01_1',
- 'I16':'seeding_TDPt35-unsonicated-0.01_1',
- 'I18':'seeding_TDPmRUBY-sonicated-0.1_1',
- 'I19':'seeding_TDPmRUBY-sonicated-0.1_1',
- 'I20':'seeding_TDPmRUBY-sonicated-0.1_1',
- 'J02':'seeding_TDPLCD-unsonicated-0.3_1',
- 'J03':'seeding_TDPLCD-unsonicated-0.3_1',
- 'J04':'seeding_TDPLCD-unsonicated-0.3_1',
- 'J10':'seeding_TDPt25-sonicated-0.1_1',
- 'J11':'seeding_TDPt25-sonicated-0.1_1',
- 'J12':'seeding_TDPt25-sonicated-0.1_1',
- 'J14':'control_TDPt35-sonicated-seeds_1',
- 'J15':'control_TDPt35-sonicated-seeds_1',
- 'J16':'control_TDPt35-sonicated-seeds_1',
- 'J18':'seeding_TDPmRUBY-sonicated-0.03_1',
- 'J19':'seeding_TDPmRUBY-sonicated-0.03_1',
- 'J20':'seeding_TDPmRUBY-sonicated-0.03_1',
- 'K02':'seeding_TDPLCD-unsonicated-0.1_1',
- 'K03':'seeding_TDPLCD-unsonicated-0.1_1',
- 'K04':'seeding_TDPLCD-unsonicated-0.1_1',
- 'K06':'control_TDPt25-unsonicated-seeds_1',
- 'K07':'control_TDPt25-unsonicated-seeds_1',
- 'K08':'control_TDPt25-unsonicated-seeds_1',
- 'K10':'seeding_TDPt25-sonicated-0.03_1',
- 'K11':'seeding_TDPt25-sonicated-0.03_1',
- 'K12':'seeding_TDPt25-sonicated-0.03_1',
- 'K14':'seeding_TDPt35-sonicated-1_1',
- 'K15':'seeding_TDPt35-sonicated-1_1',
- 'K16':'seeding_TDPt35-sonicated-1_1',
- 'K18':'seeding_TDPmRUBY-sonicated-0.01_1',
- 'K19':'seeding_TDPmRUBY-sonicated-0.01_1',
- 'K20':'seeding_TDPmRUBY-sonicated-0.01_1',
- 'L02':'seeding_TDPLCD-unsonicated-0.03_1',
- 'L03':'seeding_TDPLCD-unsonicated-0.03_1',
- 'L04':'seeding_TDPLCD-unsonicated-0.03_1',
- 'L06':'seeding_TDPt25-unsonicated-1_1',
- 'L07':'seeding_TDPt25-unsonicated-1_1',
- 'L08':'seeding_TDPt25-unsonicated-1_1',
- 'L10':'seeding_TDPt25-sonicated-0.01_1',
- 'L11':'seeding_TDPt25-sonicated-0.01_1',
- 'L12':'seeding_TDPt25-sonicated-0.01_1',
- 'L14':'seeding_TDPt35-sonicated-0.3_1',
- 'L15':'seeding_TDPt35-sonicated-0.3_1',
- 'L16':'seeding_TDPt35-sonicated-0.3_1',
- 'M02':'seeding_TDPLCD-unsonicated-0.01_1',
- 'M03':'seeding_TDPLCD-unsonicated-0.01_1',
- 'M04':'seeding_TDPLCD-unsonicated-0.01_1',
- 'M06':'seeding_TDPt25-unsonicated-0.3_1',
- 'M07':'seeding_TDPt25-unsonicated-0.3_1',
- 'M08':'seeding_TDPt25-unsonicated-0.3_1',
- 'M14':'seeding_TDPt35-sonicated-0.1_1',
- 'M15':'seeding_TDPt35-sonicated-0.1_1',
- 'N02':'control_TDPLCD-sonicated-seeds_1',
- 'N03':'control_TDPLCD-sonicated-seeds_1',
- 'N04':'control_TDPLCD-sonicated-seeds_1',
- 'N06':'seeding_TDPt25-unsonicated-0.1_1',
- 'N07':'seeding_TDPt25-unsonicated-0.1_1',
- 'N08':'seeding_TDPt25-unsonicated-0.1_1',
- 'N10':'control_TDPt35-unsonicated-seeds_1',
- 'N11':'control_TDPt35-unsonicated-seeds_1',
- 'N12':'control_TDPt35-unsonicated-seeds_1',
- 'N14':'seeding_TDPt35-sonicated-0.03_1',
- 'N15':'seeding_TDPt35-sonicated-0.03_1',
- 'N16':'seeding_TDPt35-sonicated-0.03_1',
- 'O02':'seeding_TDPLCD-sonicated-1_1',
- 'O03':'seeding_TDPLCD-sonicated-1_1',
- 'O04':'seeding_TDPLCD-sonicated-1_1',
- 'O06':'seeding_TDPt25-unsonicated-0.03_1',
- 'O07':'seeding_TDPt25-unsonicated-0.03_1',
- 'O08':'seeding_TDPt25-unsonicated-0.03_1',
- 'O10':'seeding_TDPt35-unsonicated-1_1',
- 'O11':'seeding_TDPt35-unsonicated-1_1',
- 'O12':'seeding_TDPt35-unsonicated-1_1',
- 'O14':'seeding_TDPt35-sonicated-0.01_1',
- 'O15':'seeding_TDPt35-sonicated-0.01_1',
- 'O16':'seeding_TDPt35-sonicated-0.01_1',}
 
+col_name_dict = {
+ 'H15':'blank_blank-x-x-x_1',
+ 'H16':'blank_blank-x-x-x_1',
+ 'H17':'blank_blank-x-x-x_1',
+ 'H18':'control_TDPLCDL1-monomer_1',
+ 'H19':'control_TDPLCDL1-monomer_1',
+ 'H20':'control_TDPLCDL1-monomer_1',
+ 'H21':'control_TDPLCDL2-monomer_1',
+ 'H22':'control_TDPLCDL2-monomer_1',
+ 'H23':'control_TDPLCDL2-monomer_1',
+ 'I15':'control_TDPbatch1-unsonicated-seeds_1',
+ 'I16':'control_TDPbatch1-unsonicated-seeds_1',
+ 'I17':'control_TDPbatch1-unsonicated-seeds_1',
+ 'I18':'control_TDPbatch1-sonicated-seeds_1',
+ 'I19':'control_TDPbatch1-sonicated-seeds_1',
+ 'I20':'control_TDPbatch1-sonicated-seeds_1',
+ 'I21':'control_TDPbatch2-unsonicated-seeds_1',
+ 'I22':'control_TDPbatch2-unsonicated-seeds_1',
+ 'I23':'control_TDPbatch2-unsonicated-seeds_1',
+ 'J15':'control_TDPbatch2-sonicated-seeds_1',
+ 'J16':'control_TDPbatch2-sonicated-seeds_1',
+ 'J17':'control_TDPbatch2-sonicated-seeds_1',
+ 'J18':'control_mRUBY-sonicated-seeds_1',
+ 'J19':'control_mRUBY-sonicated-seeds_1',
+ 'J20':'control_mRUBY-sonicated-seeds_1',
+ 'J21':'seeding_TDPbatch1-unsonicated-L1mon_1',
+ 'J22':'seeding_TDPbatch1-unsonicated-L1mon_1',
+ 'J23':'seeding_TDPbatch1-unsonicated-L1mon_1',
+ 'K15':'seeding_TDPbatch1-sonicated-L1mon_1',
+ 'K16':'seeding_TDPbatch1-sonicated-L1mon_1',
+ 'K17':'seeding_TDPbatch1-sonicated-L1mon_1',
+ 'K18':'seeding_TDPbatch2-unsonicated-L1mon_1',
+ 'K19':'seeding_TDPbatch2-unsonicated-L1mon_1',
+ 'K20':'seeding_TDPbatch2-unsonicated-L1mon_1',
+ 'K21':'seeding_TDPbatch2-sonicated-L1mon_1',
+ 'K22':'seeding_TDPbatch2-sonicated-L1mon_1',
+ 'K23':'seeding_TDPbatch2-sonicated-L1mon_1',
+ 'L15':'seeding_mRUBY-sonicated-L1mon_1',
+ 'L16':'seeding_mRUBY-sonicated-L1mon_1',
+ 'L17':'seeding_mRUBY-sonicated-L1mon_1',
+ 'L18':'seeding_TDPbatch1-unsonicated-L2mon_1',
+ 'L19':'seeding_TDPbatch1-unsonicated-L2mon_1',
+ 'L20':'seeding_TDPbatch1-unsonicated-L2mon_1',
+ 'L21':'seeding_TDPbatch1-sonicated-L2mon_1',
+ 'L22':'seeding_TDPbatch1-sonicated-L2mon_1',
+ 'L23':'seeding_TDPbatch1-sonicated-L2mon_1',
+ 'M15':'seeding_TDPbatch2-unsonicated-L2mon_1',
+ 'M16':'seeding_TDPbatch2-unsonicated-L2mon_1',
+ 'M17':'seeding_TDPbatch2-unsonicated-L2mon_1',
+ 'M18':'seeding_TDPbatch2-sonicated-L2mon_1',
+ 'M19':'seeding_TDPbatch2-sonicated-L2mon_1',
+ 'M20':'seeding_TDPbatch2-sonicated-L2mon_1',
+ 'M21':'seeding_mRUBY-sonicated-L2mon_1',
+ 'M22':'seeding_mRUBY-sonicated-L2mon_1',
+ 'M23':'seeding_mRUBY-sonicated-L2mon_1',
+}
 
 df = rename_cols(df, col_name_dict)
 df = df.fillna(0)
@@ -368,10 +292,11 @@ x.to_csv(f'{output_folder}bg_subtracted.csv')
 #plotting section now
 
 p_dict = {
-     'TDPLCD':'Purples',
-     'TDPmRUBY':'Reds',
-     'TDPt25':'Blues',
-     'TDPt35':'Greens',
+     'TDPLCDL1':'Purples',
+     'mRUBY':'Reds',
+     'TDPbatch1':'Blues',
+     'TDPbatch2':'Greens',
+     'TDPLCDL2':'RdPu'
 
 }
 
@@ -380,8 +305,7 @@ for t, z in subtracted.groupby('t1'):
     if 'blank' not in t:
         d=z
         plot_fluo_over_time(d=z, interval_mins=interval_mins, output_folder=output_folder, palette='RdBu', Exp_num=Exp_num, length_exp=20, types=['blank_subtracted'], ylim=False, savefig=True)
-        # for u, dfv in z.groupby('t2'):
-        #     plot_fluo_over_time(d=dfv, interval_mins=interval_mins, output_folder=output_folder, palette='RdYlGn', Exp_num=Exp_num, length_exp=20, types=['blank_subtracted'], ylim=False, savefig=False)
+
 
 
 #then, want to calculate CHANGE over time for each treatment, and plot again.

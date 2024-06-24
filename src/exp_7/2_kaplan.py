@@ -6,8 +6,8 @@ import seaborn as sns
 from loguru import logger
 from lifelines import KaplanMeierFitter 
 
-input_folder = 'results/rep_1/1_fitting_curves/'
-output_folder = 'results/rep_1/2_kaplan-meier/'
+input_folder = 'results/exp_7/1_fitting_curves/'
+output_folder = 'results/exp_7/2_kaplan-meier/'
 
 
 if not os.path.exists(output_folder):
@@ -15,7 +15,7 @@ if not os.path.exists(output_folder):
 
 fits = pd.read_csv(f'{input_folder}fit_parameters.csv')
 
-no_fit_treatments = pd.read_csv(f'{input_folder}no_fit.csv')
+no_fit = pd.read_csv(f'{input_folder}no_fit.csv')
 
 timeseries = pd.read_csv(f'{input_folder}/clean_for_fitting.csv')
 
@@ -24,12 +24,9 @@ endpoint = list(timeseries['timepoint'].unique())[-1]
 #need to turn these into time and event data. The event in this case is the LAG phase ending. so the time will be the 'tlag' and the event will be 1. Then, the no_fit will have the time as the end point, and the 'no event' will be a 0.
 #so need a new dataframe with sample, and tlag columns to start with.
 #want to now look at the ones that don't fit so well
-not_ideal = fits[fits['rquare']<0.95]
-events = fits[['sample', 'tlag']][fits['rquare']>0.9]
+not_ideal = fits[fits['rquare']<0.85]
+events = fits[['sample', 'tlag']][fits['rquare']>0.85]
 
-#fill the events column of  this dataframe with a 1, as these all were fit to the sigmoid
-#make a more sophisticated way in future? where I combine everything and say if rsquare > threshold and tlag < endpoint, assign 1, else then where tlag = endpoint, assign event = 0
-events = fits[['sample', 'tlag']][fits['rquare']>0.95]
 #fill the events column of  this dataframe with a 1, as these all were fit to the sigmoid
 #make a more sophisticated way in future? where I combine everything and say if rsquare > threshold and tlag < endpoint, assign 1, else then where tlag = endpoint, assign event = 0
 events['event'] = int(1)
@@ -78,14 +75,15 @@ plt.savefig(f'{output_folder}survival_all.png')
 #the below sectin is for if the plto wtih everything on the same graph is too much (i.e. ifthere are a lot of different concentrations AND multiple proteins etc.)
 
 
+
 p_dict = {
-     'TDPLCD':'Purples',
-     'TDPmRUBY':'Reds',
-     'TDPt25':'Blues',
-     'TDPt35':'Greens'
+     'TDPLCDL1':'Purples',
+     'mRUBY':'Reds',
+     'TDPbatch1':'Blues',
+     'TDPbatch2':'Greens',
+     'TDPLCDL2':'RdPu'
 
 }
-
 
 #now plot the different types of TDP (variable t1) in separate graphs with their own subplots for sonicated vs non-sonicated
 
