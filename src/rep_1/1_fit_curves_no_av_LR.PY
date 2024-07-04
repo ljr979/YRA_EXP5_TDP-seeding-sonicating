@@ -75,7 +75,7 @@ if __name__ == '__main__':
             x_vals = df1['timepoint'].values
             y_vals = df1['intensity'].values
             if 'seeds' not in t3:
-                # try:
+                 try:
                     # Test with original 'plain' boltzmann
                     popt, pcov = curve_fit(boltzmann, x_vals, y_vals)
                     
@@ -97,10 +97,10 @@ if __name__ == '__main__':
                     axes[0].set_title(inform)
                     bottom, top, V50, slope = popt
                     tlag = ((4*slope*bottom) / (top - bottom)) + V50 - 2*slope
-                    
+                    elongation = (top-bottom)/(4*slope)
                     fit_type='boltzmann'
                     decay='none'
-                    fit_params.append([inform, bottom, top, V50, slope, decay, tlag, round(rsq,3), fit_type])
+                    fit_params.append([inform, bottom, top, V50, slope, decay, tlag, round(rsq,3), fit_type, elongation])
 
           
                     #now next type of fit
@@ -120,9 +120,10 @@ if __name__ == '__main__':
                     
                     bottom, top, V50, slope, decay = popt
                     tlag = ((4*slope*bottom) / (top - bottom)) + V50 - 2*slope
-                    
+                    elongation = (top-bottom)/(4*slope)
                     fit_type='boltzmann_with_exp_decay'
-                    fit_params.append([inform, bottom, top, V50, slope, decay, tlag, round(rsq,3), fit_type])
+
+                    fit_params.append([inform, bottom, top, V50, slope, decay, tlag, round(rsq,3), fit_type, elongation])
 
 
 
@@ -145,9 +146,9 @@ if __name__ == '__main__':
                     
                     bottom, top, V50, slope, m = popt
                     tlag = ((4*slope*bottom) / (top - bottom)) + V50 - 2*slope
-                    
+                    elongation = (top-bottom)/(4*slope)
                     fit_type='boltzmann_with_linear'
-                    fit_params.append([inform, bottom, top, V50, slope, m, tlag, round(rsq,3), fit_type])
+                    fit_params.append([inform, bottom, top, V50, slope, m, tlag, round(rsq,3), fit_type, elongation])
                 
                     #last fit type
                     popt, pcov = curve_fit(boltzmann_with_both, x_vals, y_vals)
@@ -167,38 +168,47 @@ if __name__ == '__main__':
 
                     bottom, top, V50, slope, decay, m = popt
                     tlag = ((4*slope*bottom) / (top - bottom)) + V50 - 2*slope
-                    
+                    elongation = (top-bottom)/(4*slope)
+
                     fit_type = 'boltzmann_with_both'
                     decay = f'{decay}_{m}'
-                    fit_params.append([inform, bottom, top, V50, slope, decay, tlag, round(rsq,3), fit_type])
-                # except:
-                #     continue
+                    fit_params.append([inform, bottom, top, V50, slope, decay, tlag, round(rsq,3), fit_type, elongation])
+                 except:
+                     print(f'couln"t fit {inform}')
+                     continue
                 
                 # except Exception:
                 #     logger.info(f'No fit found for {inform}-')
                 #     no_fit.append(inform)
  
-fit_params = pd.DataFrame(fit_params, columns=['sample', 'bottom', 'top', 'V50', 'slope', 'decay', 'tlag','rquare', 'fit_type'])
+fit_params = pd.DataFrame(fit_params, columns=['sample', 'bottom', 'top', 'V50', 'slope', 'decay', 'tlag','rquare', 'fit_type', 'elongation_rate'])
 
 
-nots = pd.DataFrame(no_fit, columns=['sample']).to_csv(f'{output_folder}no_fit.csv')
-fit_params.to_csv(f'{output_folder}fit_parameters.csv')
+# nots = pd.DataFrame(no_fit, columns=['sample']).to_csv(f'{output_folder}no_fit.csv')
+# fit_params.to_csv(f'{output_folder}fit_parameters.csv')
 
 
 #checking the fitting to decide on one
-rquare_easy = fit_params[['sample','rquare','fit_type']]
-melted_params = pd.melt(fit_params, id_vars=['sample', 'fit_type'], value_vars='rquare')
+#rquare_easy = fit_params[['sample','rquare','fit_type']]
+melted_params = pd.melt(fit_params, id_vars=['sample',
+ 'fit_type','bottom',
+ 'top',
+ 'V50',
+ 'slope',
+ 'decay',
+ 'tlag', 'elongation_rate'
+ ], value_vars=['rquare'])
 
 sns.barplot(melted_params, x="fit_type", y="value")
 
 
 #want to have a little section to look at what the most efficient fitting is and 
 
-for fit_type, df in rquare_easy.groupby('fit_type'):
+for fit_type, df in melted_params.groupby('fit_type'):
     df
     fit_type
-    amazing=df[df['rquare']>0.99]
-    not_amazing=df[df['rquare']<0.99]
+    amazing=df[df['value']>0.99]
+    not_amazing=df[df['value']<0.99]
 
     prop_good=len(amazing)/len(df)
     print(fit_type, prop_good)
@@ -220,13 +230,12 @@ for sample, df in melted_params.groupby('sample'):
 good_fits=pd.concat(good_fits)
 len(good_fits)
 #then it subsets to show you which ones are not so good still
-not_so_good_fits=good_fits[good_fits['value']<0.99]
-best_filtered = good_fits[good_fits['value']>0.99]
-
-#okay some are duplicated? 
+not_so_good_fits=good_fits[good_fits['value']<0.98]
+best_filtered = good_fits[good_fits['value']>0.98]
 
 perc = len(not_so_good_fits)/len(good_fits)*100
 print(f'{perc} are not good enough fits to keep')
-
+best_filtered.rename(columns={'value':'rquare'}, inplace=True)
+best_filtered.drop([col for col in best_filtered.columns.tolist() if 'variable' in col], axis=1, inplace=True)
 best_filtered.to_csv(f'{output_folder}fit_parameters.csv')
 not_so_good_fits.to_csv(f'{output_folder}no_fit.csv')
